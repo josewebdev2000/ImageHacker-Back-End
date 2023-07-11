@@ -1,5 +1,4 @@
 # Custom Errors to be thrown when handling image editing operations
-
 class UnauthorizedImageFormatError(Exception):
     """Throw this error when the given image is not allowed by the image converter."""
 
@@ -37,6 +36,13 @@ class InvalidImageSizeParameterTypeError(Exception):
 
 class ImageResizingError(Exception):
     """Throw this error while trying to resize an image."""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class ImageBgRemovalError(Exception):
+    """Throw this error while trying to remove the backgrounf of an image."""
     
     def __init__(self, message):
         self.message = message
