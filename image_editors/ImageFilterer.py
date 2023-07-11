@@ -49,7 +49,7 @@ class ImageFilterer(object):
         
         except Exception as e:
             print(e)
-            raise ImageColorFilteringError("An unknown error occured while applying color filters to the image.")
+            raise ImageColorFilteringError("An unknown error occured while applying filters to the image.")
         
     
     @staticmethod
@@ -72,7 +72,7 @@ class ImageFilterer(object):
         
         except Exception as e:
             print(e)
-            raise ImageColorFilteringError("An unknown error occured while applying color filters to the image.")
+            raise ImageColorFilteringError("An unknown error occured while transforming the image to black and white.")
             
     
     @staticmethod

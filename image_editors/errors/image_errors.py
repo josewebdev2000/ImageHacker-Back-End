@@ -68,3 +68,30 @@ class ImageColorFilteringError(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+
+class InvalidRotationDegreeError(Exception):
+    """Throw this error when the user provides an invalid degree to rotate an image."""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class InvalidRotationOrientationError(Exception):
+    """Throw this error when the user provided an invalid rotation orientation."""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class InvalidFlippingDirectionError(Exception):
+    """Throw this error when the user provided an invalid flipping direction"""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class ImagePositionModifyingError(Exception):
+    """Throw this error when trying to modify the position of an image."""
+    
+    def __init__(self, message):
+        super().__init__(self.message)
