@@ -47,3 +47,24 @@ class ImageBgRemovalError(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+
+class InvalidFilterError(Exception):
+    """Throw this error when the user requests for a filter that does not exist."""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class InvalidColorParameterError(Exception):
+    """Throw this error when the user requests an invalid color filter."""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class ImageColorFilteringError(Exception):
+    """Throw this error when trying to apply color filters to an image."""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
