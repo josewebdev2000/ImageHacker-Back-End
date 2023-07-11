@@ -94,4 +94,26 @@ class ImagePositionModifyingError(Exception):
     """Throw this error when trying to modify the position of an image."""
     
     def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class InvalidCoordinateTypeError(Exception):
+    """Throw this error when an invalid coordinate type is given by the user."""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class InvalidCoordinateError(Exception):
+    """Throw this error when an invalid coordinate is given by the user."""
+    
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+class ImageCroppingError(Exception):
+    """Throw this error while cropping an image."""
+    
+    def __init__(self, message):
+        self.message = message
         super().__init__(self.message)
