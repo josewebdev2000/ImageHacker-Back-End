@@ -31,6 +31,8 @@ class ImageBgRemover(object):
         try:
             img_no_bg = remove(img)
             img_no_bg.save(converted_image_name)
+            img_no_bg.format = get_image_extension_from_img(img).upper()[1:]
+            img_no_bg.format = "JPEG" if img_no_bg.format == "JPG" else img_no_bg.format
             return img_no_bg
         
         except Exception as e:

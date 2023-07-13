@@ -25,6 +25,8 @@ class ImageResizer(object):
             
             resized_img = img.resize((width, height))
             resized_img.save(converted_image_name)
+            resized_img.format = get_image_extension_from_img(img).upper()[1:]
+            resized_img.format = "JPEG" if resized_img.format == "JPG" else resized_img.format
             
             return resized_img
         
@@ -63,6 +65,8 @@ class ImageResizer(object):
             try:
                 resized_img = img.resize((dimparam, new_height))
                 resized_img.save(converted_image_name)
+                resized_img.format = get_image_extension_from_img(img).upper()[1:]
+                resized_img.format = "JPEG" if resized_img.format == "JPG" else resized_img.format
                 return resized_img
             
             except Exception as e:
@@ -75,6 +79,8 @@ class ImageResizer(object):
             try:
                 resized_img = img.resize((new_width, dimparam))
                 resized_img.save(converted_image_name)
+                resized_img.format = get_image_extension_from_img(img).upper()[1:]
+                resized_img.format = "JPEG" if resized_img.format == "JPG" else resized_img.format
                 return resized_img
             
             except Exception as e:
@@ -115,6 +121,8 @@ class ImageResizer(object):
         try:
             resized_img = img.resize((new_width, new_height))
             resized_img.save(converted_image_name)
+            resized_img.format = get_image_extension_from_img(img).upper()[1:]
+            resized_img.format = "JPEG" if resized_img.format == "JPG" else resized_img.format
             return resized_img
             
         except Exception as e:

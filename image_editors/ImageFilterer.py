@@ -45,6 +45,8 @@ class ImageFilterer(object):
         try:
             new_img = img.filter(ImageFilterer.VALID_FILTERS[filter.upper()])
             new_img.save(converted_image_name)
+            new_img.format = get_image_extension_from_img(img).upper()[1:]
+            new_img.format = "JPEG" if new_img.format == "JPG" else new_img.format
             return new_img
         
         except Exception as e:
@@ -68,6 +70,8 @@ class ImageFilterer(object):
         try:
             new_img = img.convert("L")
             new_img.save(converted_image_name)
+            new_img.format = get_image_extension_from_img(img).upper()[1:]
+            new_img.format = "JPEG" if new_img.format == "JPG" else new_img.format
             return new_img
         
         except Exception as e:
@@ -114,6 +118,8 @@ class ImageFilterer(object):
             new_img = sharpness_enhancer.enhance(sharpness)
             
             new_img.save(converted_image_name)
+            new_img.format = get_image_extension_from_img(img).upper()[1:]
+            new_img.format = "JPEG" if new_img.format == "JPG" else new_img.format
             return new_img
         
         except Exception as e:

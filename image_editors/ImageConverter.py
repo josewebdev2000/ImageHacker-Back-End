@@ -71,7 +71,9 @@ class ImageConverter(object):
             )
             
             img.save(converted_image_name)
-            return Image.open(converted_image_name)
+            converted_img = Image.open(converted_image_name)
+            converted_img.format = output_file_format
+            return converted_img
         
         # Otherwise raise an ImageConversionError
         except Exception as e:

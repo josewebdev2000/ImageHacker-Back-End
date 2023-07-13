@@ -64,6 +64,8 @@ class ImageCropper(object):
         try:
             new_img = img.crop([x1, y1, x2, y2])
             new_img.save(converted_image_name)
+            new_img.format = get_image_extension_from_img(img).upper()[1:]
+            new_img.format = "JPEG" if new_img.format == "JPG" else new_img.format
             return new_img
         
         except Exception as e:
