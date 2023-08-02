@@ -1,0 +1,1 @@
+"""Custom HTTP Errors that return JSON feedback instead of HTML feedback"""

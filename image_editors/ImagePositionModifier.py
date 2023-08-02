@@ -16,7 +16,10 @@ class ImagePositionModifier(object):
     # Make a dictionary of valid directions
     VALID_DIRECTIONS = {
         "HORIZONTAL": Image.FLIP_LEFT_RIGHT,
-        "VERTICAL": Image.FLIP_TOP_BOTTOM
+        "VERTICAL": Image.FLIP_TOP_BOTTOM,
+        "90_ROTATION": Image.ROTATE_90,
+        "180_ROTATION": Image.ROTATE_180,
+        "270_ROTATION": Image.ROTATE_270
     }
     
     @staticmethod
