@@ -27,21 +27,96 @@ from errors.json_errors import JsonError
 
     The following is the dict of acceptable action types with the actions they may perform:
     {
-      "bg-remove": ("bg-remove",),
+      "bgRemove": ("bgRemove",),
       "convert": ("convert",), 
       "crop": ("crop",), 
-      "filter", ("filter", "transform-black-n-white", "color-filter")
-      "pos-modify": ("rotate", "flip"), 
-      "resize": ("resize", "resize-keep-ratio", "resize-keep-percentage")
+      "filter", ("filter", "transformBlackNWhite", "colorFilter")
+      "posModify": ("rotate", "flip"), 
+      "resize": ("resize", "resizeKeepRatio", "resizeByPercentage")
+    }
+    
+    The following is the dict of acceptable parameters and data types of parameters for image editting actions:
+    {
+        "bgRemove": None,
+        "transformBlackNWhite": None,
+        "convert": {
+            outputImageFormat: String
+        },
+        "crop": {
+            x1: Integer,
+            y1: Integer,
+            x2: Integer,
+            y2: Integer
+        },
+        "filter": {
+            filter: String
+        },
+        "colorFilter": {
+            brightness: Float,
+            contrast: Float,
+            saturation: Float,
+            sharpness: Float
+        },
+        "rotate": {
+            degrees: Integer,
+            orientation: String
+        },
+        "flip": {
+            direction: String
+        },
+        "resize": {
+            width: Integer,
+            height: Integer
+        },
+        "resizeKeepRatio": {
+            dimparam: Integer,
+            dimparamType: String
+        },
+        "resizeByPercentage": {
+            percentage: Integer
+        }
+    }
+    
+    The following are an example structures of the action JSON field
+    
+    action: {
+        "resize": {
+            "resizeByPercentage": {
+                percentage: 30
+            }
+        }
+    }
+    
+    action: {
+        "crop": {
+            "crop": {
+                x1: 90,
+                y1: 120,
+                x2: 250,
+                y2: 200
+            }
+        }
+    }
+    
+    action: {
+        "convert": {
+            "convert" : {
+                outputImageFormat: "ICO"
+            }
+        }
+    }
+    
+    action: {
+        "bgRemove": {
+            "bgRemove": None
+        }
     }
     
     Structure of JSON object to receive from the front-end
     {
         imageBase64URL: URL that represents the binary data of the image encoded in Base 64,
         imageFormat:    File Format of the Received Image (PNG if not specified),
-        actionType:     Type of editting operation to be performed,
-        action:         Specifies the action to be performed by the server,
-        args:           Arguments to be provided to the specific image editting operation besides the image
+        action:         Image Editting operation to perform along with all associated information
     }
     
     Structure of JSON object to return from a successful 200 OK HTTP Response
@@ -74,15 +149,57 @@ from errors.json_errors import JsonError
 app = Flask(__name__)
 CORS(app)
 
+"""Error Handlers"""
+
+"""Client-Side Errors"""
+@app.errorhandler(400)
+def bad_request(e):
+    return custom_response({"errorMessage": "A bad request was sent"}, 400)
+    
+@app.errorhandler(404)
+def not_found(e):
+    return custom_response({"errorMessage": "The requested resource could not be found"}, 404)
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return custom_response({"errorMessage": "The requested method cannot be used in the requested route"}, 405)
+
+@app.errorhandler(408)
+def request_timeout(e):
+    return custom_response({"errorMessage": "It took more time than expected to produce a proper response for your request"}, 408)
+
+@app.errorhandler(413)
+def payload_too_large(e):
+    return custom_response({"errorMessage": "The request contains a payload that is too large for the server to process"}, 413)
+
+@app.errorhandler(414)
+def uri_too_long(e):
+    return custom_response({"errorMessage": "The request contains a URI that is too long for the server to process"}, 414)
+
+@app.errorhandler(415)
+def unsupported_media_type(e):
+    return custom_response({"errorMessage": "The request contains media type that is unsupported by the server"}, 415)
+
+"""Server-Side Errors"""
+@app.errorhandler(500)
+def internal_server_error(e):
+    return custom_response({"errorMessage": "The server failed to provide a proper response for your request"},500)
+
+@app.errorhandler(501)
+def not_implemented(e):
+    return custom_response({"errorMessage": "The requested method is not implemented by the server"}, 501)
+
+@app.errorhandler(503)
+def service_unavailable(e):
+    return custom_response({"errorMessage": "The server is currently unavailable to process your request"}, 503)
 
 """HTTP Routes"""
-
 @app.route("/", methods=["GET"])
 def home():
     """Prove to the Front-End this web server works."""
     
     message = {"message": "ImageHacker Image Editting Web API server is up and running"}
-    return jsonify(message)
+    return custom_response(message, 200)
 
 @app.route("/img-proxy", methods=["GET"])
 def image_proxy():
@@ -123,6 +240,7 @@ def edit_img():
     # Get the file format from the request
     # Assign PNG if no image format was provided
     image_format = image_data.get("imageFormat", "PNG")
+    image_format = "PNG" if image_format == None else image_format
         
     # Generate a unique file name to save in the temp folder
     complete_temp_filename = get_temp_filename(image_format)
@@ -159,8 +277,6 @@ def edit_img():
     
     except Exception as e:
         print(e)
-        res["errorMessage"] = "The server failed to process your image"
-        return custom_response(res, 500)
     
     else:
         return custom_response(res, 200)
