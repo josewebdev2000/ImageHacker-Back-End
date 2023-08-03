@@ -7,9 +7,15 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 from image_editors.helpers.file_handling import get_new_image_filename
+from image_editors.ImageBgRemover import ImageBgRemover
+from image_editors.ImageConverter import ImageConverter
+from image_editors.ImageCropper import ImageCropper
 from image_editors.ImageFilterer import ImageFilterer
+from image_editors.ImagePositionModifier import ImagePositionModifier
+from image_editors.ImageResizer import ImageResizer
+from image_editors.errors.image_errors import UnauthorizedImageFormatError, SameImageFormatError, ImageConversionError, InvalidImageSizeParameterError, InvalidImageSizeParameterTypeError, ImageResizingError, ImageBgRemovalError, InvalidFilterError, InvalidColorParameterError, ImageColorFilteringError, InvalidRotationDegreeError, InvalidRotationOrientationError, InvalidFlippingDirectionError, ImagePositionModifyingError, InvalidCoordinateTypeError, InvalidCoordinateError, ImageCroppingError
 
-from helpers.server_helpers import get_unique_identifier, get_valid_action_types, get_valid_actions_by_action_type, remove_temp_file
+from helpers.server_helpers import clear_out_folder, get_unique_identifier, get_valid_action_types, get_valid_actions_by_action_type, get_valid_parameter_names_by_action
 from errors.json_errors import JsonError
 """
     Note:
@@ -109,6 +115,12 @@ from errors.json_errors import JsonError
     action: {
         "bgRemove": {
             "bgRemove": None
+        }
+    }
+    
+    action: {
+        "filter": {
+            "transformBlackNWhite": None
         }
     }
     
@@ -239,27 +251,26 @@ def edit_img():
     
     # Get the file format from the request
     # Assign PNG if no image format was provided
-    image_format = image_data.get("imageFormat", "PNG")
-    image_format = "PNG" if image_format == None else image_format
+    image_format = extract_image_format_from_request(image_data)
         
     # Generate a unique file name to save in the temp folder
-    complete_temp_filename = get_temp_filename(image_format)
+    complete_input_temp_filename = get_temp_filename(image_format)
     
     try:
         # Get Image Pillow Object from Base 64 Encoded Image URL
         image = get_image_from_base64_url(image_data)
         
         # Save the image in the temp folver
-        image.save(complete_temp_filename)
+        image.save(complete_input_temp_filename)
         
         # Close the image
         image.close()
         
         # Reopen the image saved in temp to ensure it's the right file format
-        image_to_modify = Image.open(complete_temp_filename)
+        image_to_modify = Image.open(complete_input_temp_filename)
         
         # Apply filter to the image
-        editted_image = ImageFilterer.transform_to_black_n_white(image_to_modify)
+        editted_image = get_editted_image(image_to_modify, image_data)
         
         # Extract Image Base64 URL from the editted image
         encoded_image_data = get_image_base64_url_from_image(editted_image)
@@ -277,13 +288,15 @@ def edit_img():
     
     except Exception as e:
         print(e)
+        res["errorMessage"] = "The server failed to process your request"
+        return custom_response(res, 500)
     
     else:
         return custom_response(res, 200)
     
     finally:
-         # Remove the image since it's no longer required
-        remove_temp_file(complete_temp_filename)
+         # Remove the input and output images since they're no longer required
+        clear_out_folder("temp")
 
 
 """General functions"""
@@ -309,6 +322,19 @@ def get_temp_filename(image_format):
     
     return temp_filename
 
+def extract_image_format_from_request(image_data):
+    """Return the image format from the JSON image data provided by a HTTP request."""
+    
+    try:
+        image_format = image_data["imageFormat"]
+        image_format = "PNG" if image_format == None else image_format
+    
+    except KeyError:
+        raise JsonError("The JSON field: \"imageFormat\" for the Image Format is absent in this request")
+    
+    else:
+        return image_format
+     
 def get_image_from_base64_url(image_data):
     """Return a Pillow Image Object from a Base 64"""
     
@@ -325,14 +351,125 @@ def get_image_from_base64_url(image_data):
         # Generate an image object from the received image data
         image = Image.open(image_pseudo_file)
     
-    except KeyError as e:
-        raise JsonError("The JSON field: \"imageBase64URL\" for the encoded Base64 Image URL is absent in this request.")
+    except KeyError:
+        raise JsonError("The JSON field: \"imageBase64URL\" for the encoded Base64 Image URL is absent in this request")
     
-    except Exception as e:
-        raise JsonError("The encoded Base64 Image URL provided in this request is invalid.")
+    except Exception:
+        raise JsonError("The encoded Base64 Image URL provided in this request is invalid")
     
     else:
         return image
+
+def get_editted_image(input_image, image_data):
+    """Return the editted image according to JSON data that came from an HTTP request."""
+    
+    try:
+        
+        # Extract data about the action to perform
+        action_dict = image_data["action"]
+        
+        # If the length of the types of actions is not equal to one raise a JSON Error
+        if len(action_dict) != 1:
+            raise JsonError("Only one category of image editting operations must be specified for the JSON \"action\" field.")
+        
+        # Grab the action category
+        action_type = tuple(action_dict.keys())[0]
+        
+        # If the action category is invalid raise a JSON Error
+        if not action_type in get_valid_action_types():
+            raise JsonError(f"The action category: \"{action_type}\" is invalid.")
+        
+        # Grab data about the specific action to perform
+        specific_action_dict = action_dict[action_type]
+        
+        # If the length of the actions to perform is not equal to one raise a JSON Error
+        if len(specific_action_dict) != 1:
+            raise JsonError(f"Only one image editting operation must be specified per request.")
+        
+        # Grab the specific action to perform
+        specific_action = tuple(specific_action_dict.keys())[0]
+        
+        # If the specific action is invalid raise a JSON Error
+        if not specific_action in get_valid_actions_by_action_type(action_type):
+            raise JsonError(f"The action: \"{specific_action}\" is invalid.")
+        
+        # Grab the parameters the specific action needs to edit the image
+        specific_action_params_dict = specific_action_dict[specific_action]
+        
+        # If parameters were provided for an operation that does not require it raise a JsonError
+        if specific_action_params_dict and (specific_action == "bgRemove" or specific_action == "transformBlackNWhite"):
+            raise JsonError(f"The action: \"{specific_action}\" requires no arguments for it to work.")
+        
+        # If no parameters have been given for actions that are not "bgRemove" and "transformBlackNWhite" raise a JSON Error
+        if not specific_action_params_dict and specific_action != "bgRemove" and specific_action != "transformBlackNWhite":
+             raise JsonError(f"The action: \"{specific_action}\" requires arguments for it to work.")
+        
+        # Grab the arguments for this action if the specific action params dict is not none
+        if specific_action_params_dict:
+            specific_action_params = tuple(specific_action_params_dict.keys())
+            
+            # If the given parameters are different from the expected parameters for this specific action raise a JSON Error
+            if set(specific_action_params) != set(get_valid_parameter_names_by_action(specific_action)):
+                raise JsonError(f"The action : \"{specific_action}\" was provided with the wrong parameters for this request.")
+            
+            # Convert to integer every parameter that was given as a number
+            for specific_action_param in specific_action_params_dict:
+                
+                if isinstance(specific_action_params_dict[specific_action_param], str):
+                
+                    if specific_action_params_dict[specific_action_param].isdigit():
+                        specific_action_params_dict[specific_action_param] = int(specific_action_params_dict[specific_action_param])
+            
+        
+        # Edit the image and return a new one
+        if specific_action == "bgRemove":
+            editted_image = ImageBgRemover.remove_bg(input_image)
+        
+        elif specific_action == "convert":
+            editted_image = ImageConverter.convert(input_image, specific_action_params_dict["outputImageFormat"])
+        
+        elif specific_action == "crop":
+            editted_image = ImageCropper.crop_img(input_image, specific_action_params_dict["x1"], specific_action_params_dict["y1"], specific_action_params_dict["x2"], specific_action_params_dict["y2"])
+        
+        elif specific_action == "filter":
+            editted_image = ImageFilterer.apply_filter(input_image, specific_action_params_dict["filter"])
+        
+        elif specific_action == "colorFilter":
+            editted_image = ImageFilterer.apply_color_filter(input_image, specific_action_params_dict["brightness"], specific_action_params_dict["contrast"], specific_action_params_dict["saturation"], specific_action_params_dict["sharpness"])
+        
+        elif specific_action == "transformBlackNWhite":
+            editted_image = ImageFilterer.transform_to_black_n_white(input_image)
+        
+        elif specific_action == "rotate":
+            editted_image = ImagePositionModifier.rotate_img(input_image, specific_action_params_dict["degrees"], specific_action_params_dict["orientation"])
+        
+        elif specific_action == "flip":
+            editted_image = ImagePositionModifier.flip_img(input_image, specific_action_params_dict["direction"])
+        
+        elif specific_action == "resize":
+            editted_image = ImageResizer.resize(input_image, specific_action_params_dict["width"], specific_action_params_dict["height"])
+        
+        elif specific_action == "resizeKeepRatio":
+            editted_image = ImageResizer.resize_keep_ratio(input_image, specific_action_params_dict["dimparam"], specific_action_params_dict["dimparamType"])
+        
+        elif specific_action == "resizeByPercentage":
+            editted_image = ImageResizer.resize_by_percentage(input_image, specific_action_params_dict["percentage"])
+        
+        else:
+            pass
+    
+    except KeyError:
+        raise JsonError("The given JSON payload does not contain proper data to edit the given image.")
+    
+    except AttributeError as e:
+        print(e)
+        raise JsonError("The given JSON data could not be parsed.")
+    
+    except (UnauthorizedImageFormatError, SameImageFormatError, ImageConversionError, InvalidImageSizeParameterError, InvalidImageSizeParameterTypeError, ImageResizingError, ImageBgRemovalError, InvalidFilterError, InvalidColorParameterError, ImageColorFilteringError, InvalidRotationDegreeError, InvalidRotationOrientationError, InvalidFlippingDirectionError, ImagePositionModifyingError, InvalidCoordinateTypeError, InvalidCoordinateError, ImageCroppingError) as e:
+        raise JsonError(e.message)
+    
+    else:
+        return editted_image
 
 def get_image_base64_url_from_image(image_obj):
     """Return an Image Base64 URL from a Python Pillow Object"""
